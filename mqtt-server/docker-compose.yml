@@ -1,0 +1,56 @@
+# Docker Compose for MQTT Server with Mosquitto Broker
+
+version: '3.8'
+
+services:
+  # MQTT Broker (Mosquitto)
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mqtt-broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883"     # MQTT端口
+      - "9001:9001"     # WebSocket端口
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - mqtt-network
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -t test -m 'health check' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MQTT Server (Go应用)
+  mqtt-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mqtt-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"     # HTTP API端口
+    environment:
+      - MQTT_BROKER=mosquitto
+      - MQTT_PORT=1883
+      - HTTP_PORT=8080
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    networks:
+      - mqtt-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  mqtt-network:
+    driver: bridge
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:

@@ -1,0 +1,52 @@
+# Docker ignore文件
+
+# Go相关
+*.mod
+*.sum
+vendor/
+
+# 构建产物
+mqtt-server
+*.exe
+*.dll
+*.so
+*.dylib
+
+# 测试文件
+*.test
+*.out
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.temp
+
+# Git
+.git/
+.gitignore
+
+# Docker相关
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 文档
+*.md
+docs/
+
+# Mosquitto运行时数据
+mosquitto/data/
+mosquitto/log/
