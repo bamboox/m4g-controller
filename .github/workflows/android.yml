@@ -1,8 +1,15 @@
 name: Android CI/CD
 
+permissions:
+  contents: write  # 允许写入仓库内容和创建release
+  packages: write  # 允许发布包
+  actions: read    # 允许读取actions
+
 on:
   push:
     branches: [ main, develop ]
+    tags:
+      - 'v*'  # 当推送标签时触发
   pull_request:
     branches: [ main ]
   release:
@@ -53,7 +60,7 @@ jobs:
       run: ./gradlew assembleDebug
       
     - name: Build release APK
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
       run: ./gradlew assembleRelease
       env:
         SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
@@ -67,17 +74,39 @@ jobs:
         path: app/build/outputs/apk/debug/*.apk
         
     - name: Upload release APK
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
       uses: actions/upload-artifact@v4
       with:
         name: release-apk
         path: app/build/outputs/apk/release/*.apk
         
     - name: Upload to Release
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
-        files: app/build/outputs/apk/release/app-release.apk
+        files: |
+          app/build/outputs/apk/release/*.apk
+          app/build/outputs/apk/debug/*.apk
+        name: Release ${{ github.ref_name }}
+        tag_name: ${{ github.ref_name }}
+        body: |
+          ## 📱 Android 4G 远程控制应用
+          
+          ### 🚀 功能特性
+          - 通过MQTT协议远程控制Android设备4G网络
+          - 无需root权限，使用Shizuku和无障碍服务
+          - 支持自动重连和状态监控
+          
+          ### 📦 下载文件
+          - `app-release.apk`: 正式版本，推荐生产环境使用
+          - `app-debug.apk`: 调试版本，用于开发测试
+          
+          ### 📋 安装要求
+          - Android 7.0+ (API 24)
+          - 需要开启无障碍服务权限
+          - 建议安装Shizuku以获得更好的权限管理
+        draft: false
+        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
