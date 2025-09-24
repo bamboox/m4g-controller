@@ -334,3 +334,4 @@ class MainActivity : AppCompatActivity() {
         // 如果需要在后台时关闭常亮，可以取消下面的注释
         // window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
+}
