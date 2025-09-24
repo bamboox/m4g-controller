@@ -10,11 +10,13 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.Switch
 import androidx.appcompat.app.AppCompatActivity
 import org.eclipse.paho.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.*
 import rikka.shizuku.Shizuku
 import android.util.Log
+import android.view.WindowManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,12 +26,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnConnectMqtt: Button
     private lateinit var btnDisconnectMqtt: Button
     private lateinit var tvConnectionStatus: TextView
+    private lateinit var switchKeepScreenOn: Switch
     private var isConnected = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // 保持屏幕常亮
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
         initViews()
         setupClickListeners()
     }
@@ -39,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         btnConnectMqtt = findViewById(R.id.btn_connect_mqtt)
         btnDisconnectMqtt = findViewById(R.id.btn_disconnect_mqtt)
         tvConnectionStatus = findViewById(R.id.tv_connection_status)
+        switchKeepScreenOn = findViewById(R.id.switch_keep_screen_on)
     }
 
     private fun setupClickListeners() {
@@ -52,6 +59,11 @@ class MainActivity : AppCompatActivity() {
 
         btnDisconnectMqtt.setOnClickListener {
             disconnectMqtt()
+        }
+        
+        // 屏幕常亮开关事件
+        switchKeepScreenOn.setOnCheckedChangeListener { _, isChecked ->
+            toggleKeepScreenOn(isChecked)
         }
     }
 
@@ -288,4 +300,37 @@ class MainActivity : AppCompatActivity() {
             }
         }.start()
     }
-}
+    
+    /**
+     * 控制屏幕常亮功能
+     * @param keepOn true表示保持屏幕常亮，false表示允许屏幕自动熄灭
+     */
+    private fun toggleKeepScreenOn(keepOn: Boolean) {
+        if (keepOn) {
+            // 添加保持屏幕常亮标志
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            Toast.makeText(this, "已开启屏幕常亮", Toast.LENGTH_SHORT).show()
+            Log.d("MainActivity", "屏幕常亮已开启")
+        } else {
+            // 移除保持屏幕常亮标志
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            Toast.makeText(this, "已关闭屏幕常亮", Toast.LENGTH_SHORT).show()
+            Log.d("MainActivity", "屏幕常亮已关闭")
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // 当Activity重新进入前台时，根据开关状态重新设置屏幕常亮
+        if (::switchKeepScreenOn.isInitialized && switchKeepScreenOn.isChecked) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // 当Activity进入后台时，可以选择是否保持屏幕常亮
+        // 这里我们在后台时仍然保持常亮设置，因为这是一个远程控制应用
+        // 如果需要在后台时关闭常亮，可以取消下面的注释
+        // window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
