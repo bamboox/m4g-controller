@@ -7,7 +7,7 @@ on:
     inputs:
       model_id:
         required: true
-        default: 'Qwen/Qwen2.5-0.5B-Instruct'
+        default: 'zai-org/AutoGLM-Phone-9B'
 
 jobs:
   # ==================== 阶段1: 下载模型 ====================
