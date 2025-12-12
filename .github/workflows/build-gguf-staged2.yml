@@ -15,23 +15,20 @@ jobs:
     
     steps:
       - name: Free disk space
-        run: |
-          echo "Before cleanup:"
-          df -h
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo rm -rf /usr/share/swift
-          sudo rm -rf /usr/local/.ghcup
-          sudo rm -rf /usr/lib/jvm
-          sudo rm -rf /usr/local/share/powershell
-          sudo rm -rf /usr/local/lib/node_modules
-          sudo docker image prune --all --force
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/*
-          echo "After cleanup:"
-          df -h
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6GB
+          tool-cache: true
+          
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
       
       - name: Checkout
         uses: actions/checkout@v4
@@ -92,18 +89,21 @@ jobs:
             exit 1
           fi
           
-          # 下载转换脚本和依赖文件
-          wget https://raw.githubusercontent.com/ggerganov/llama.cpp/master/convert_hf_to_gguf.py -O bin/convert_hf_to_gguf.py
-          wget https://raw.githubusercontent.com/ggerganov/llama.cpp/master/requirements.txt -O bin/requirements.txt
-          
           # 赋予执行权限
           chmod +x bin/llama-quantize
-          
-          # 安装 python 依赖
-          pip install -r bin/requirements.txt
-          
           # 清理压缩包
           rm -f *bin-ubuntu-x64*
+          
+          git clone https://github.com/ggerganov/llama.cpp
+          # 安装 python 依赖
+          pip install -r requirements.txt
+          cp convert_hf_to_gguf.py ../bin/
+          # 复制可能需要的额外依赖文件/目录
+          if [ -d "requirements" ]; then
+            cp -r requirements ../bin/
+          fi
+          cd ..
+          rm -rf llama.cpp
       
       - name: Download model
         env:
@@ -111,7 +111,6 @@ jobs:
           HF_HUB_ENABLE_HF_TRANSFER: 1
         run: |
           hf download ${{ github.event.inputs.model_id }} --local-dir ./model_hf --token "${HF_TOKEN}"
-          
           # 清理 HF 缓存以释放空间
           rm -rf ~/.cache/huggingface
           echo "下载完成: $(du -sh ./model_hf)"
