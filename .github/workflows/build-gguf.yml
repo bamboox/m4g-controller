@@ -58,7 +58,7 @@ jobs:
             HF_MODEL_ID=${{ inputs.HF_MODEL_ID }}
             HF_TOKEN=${{ inputs.HF_TOKEN }}
             QUANTIZATION=${{ inputs.QUANTIZATION }}
-            BASE_IMAGE=${{ env.REGISTRY }}/${{ env.BASE_IMAGE_NAME }}:latest
+            # BASE_IMAGE=${{ env.REGISTRY }}/${{ env.BASE_IMAGE_NAME }}:latest
 
       - name: Extract GGUF file
         run: |
