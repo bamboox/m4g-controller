@@ -83,7 +83,7 @@ jobs:
           cd llama.cpp
           python convert_hf_to_gguf.py ../model_hf \
             --outfile ../model.gguf \
-            --outtype Q4_K_M
+            --outtype f16
           
           # # 删除 HF 模型释放空间
           # rm -rf ../model_hf
