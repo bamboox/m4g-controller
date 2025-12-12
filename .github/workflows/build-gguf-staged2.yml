@@ -22,7 +22,14 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
           sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /usr/local/.ghcup
+          sudo rm -rf /usr/lib/jvm
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/lib/node_modules
           sudo docker image prune --all --force
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
           echo "After cleanup:"
           df -h
       
@@ -46,7 +53,7 @@ jobs:
           gh release download -R ggerganov/llama.cpp -p "*bin-ubuntu-x64*"
           
           # 筛选出 CPU 版本 (不包含 vulkan 的文件)
-          BINARY_FILE=$(ls *bin-ubuntu-x64* | grep -v "vulkan" | head -n 1)
+          BINARY_FILE=$(ls *bin-ubuntu* | grep -v "vulkan" | head -n 1)
           
           if [ -z "$BINARY_FILE" ]; then
             echo "Error: No CPU binary found. Available files:"
