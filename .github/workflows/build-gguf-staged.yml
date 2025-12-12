@@ -40,15 +40,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_HUB_ENABLE_HF_TRANSFER: 1
         run: |
-          python -c "
-          from huggingface_hub import snapshot_download
-          snapshot_download(
-              repo_id='${{ github.event.inputs.model_id }}',
-              local_dir='./model_hf',
-              local_dir_use_symlinks=False,
-              token='${HF_TOKEN}',
-          )
-          "
+          hf download ${{ github.event.inputs.model_id }} --local-dir ./model_hf  --token "${HF_TOKEN}"
           echo "下载完成: $(du -sh ./model_hf)"
       
       - name: Upload artifact
