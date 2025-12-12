@@ -40,7 +40,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_HUB_ENABLE_HF_TRANSFER: 1
         run: |
-          hf download ${{ github.event.inputs.model_id }} --local-dir ./model_hf  --token "${HF_TOKEN}"
+          hf download ${{ github.event.inputs.model_id }} --local-dir ./model_hf
           echo "下载完成: $(du -sh ./model_hf)"
       
       - name: Upload artifact
