@@ -1,0 +1,74 @@
+name: Build GGUF Model
+
+on:
+  workflow_dispatch:
+    inputs:
+      HF_MODEL_ID:
+        description: 'Hugging Face Model ID (e.g. Qwen/Qwen2.5-0.5B-Instruct)'
+        required: true
+        type: string
+      HF_TOKEN:
+        description: 'Hugging Face Token (optional)'
+        required: false
+        type: string
+      QUANTIZATION:
+        description: 'Quantization method'
+        required: false
+        default: 'q4_k_m'
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  BASE_IMAGE_NAME: ${{ github.repository }}/gguf-base
+
+jobs:
+  build-gguf:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract model name
+        id: meta
+        run: |
+          MODEL_ID="${{ inputs.HF_MODEL_ID }}"
+          IMAGE_NAME=$(echo "$MODEL_ID" | awk -F/ '{print $NF}')
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./hf-to-gguf-converter
+          file: ./hf-to-gguf-converter/Dockerfile
+          push: false
+          load: true
+          tags: gguf-image:latest
+          build-args: |
+            HF_MODEL_ID=${{ inputs.HF_MODEL_ID }}
+            HF_TOKEN=${{ inputs.HF_TOKEN }}
+            QUANTIZATION=${{ inputs.QUANTIZATION }}
+            BASE_IMAGE=${{ env.REGISTRY }}/${{ env.BASE_IMAGE_NAME }}:latest
+
+      - name: Extract GGUF file
+        run: |
+          docker create --name temp-container gguf-image:latest
+          docker cp temp-container:/data/model.gguf ./model.gguf
+          docker rm temp-container
+
+      - name: Upload GGUF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.image_name }}.gguf
+          path: ./model.gguf
+
