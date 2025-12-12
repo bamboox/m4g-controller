@@ -1,6 +1,6 @@
-# .github/workflows/build-gguf-staged2.yml
+# .github/workflows/build-gguf-staged.yml
 
-name: Build GGUF (Staged2)
+name: Build GGUF (Staged)
 
 on:
   workflow_dispatch:
@@ -39,23 +39,43 @@ jobs:
           pip install huggingface_hub hf-transfer
       
       - name: Setup llama.cpp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone https://github.com/ggerganov/llama.cpp
-          cd llama.cpp
-          cmake -B build
-          cmake --build build --config Release
+          # 下载最新 release 的 ubuntu-x64 预编译包 (排除 s390x, 但可能会包含 vulkan)
+          gh release download -R ggerganov/llama.cpp -p "*bin-ubuntu-x64*"
           
-          # 移动二进制文件并清理构建文件以释放空间
-          mkdir -p ../bin
-          mv build/bin/llama-quantize ../bin/
-          mv convert_hf_to_gguf.py ../bin/
-          mv requirements.txt ../bin/
+          # 筛选出 CPU 版本 (不包含 vulkan 的文件)
+          BINARY_FILE=$(ls *bin-ubuntu-x64* | grep -v "vulkan" | head -n 1)
           
-          cd ..
-          rm -rf llama.cpp
+          if [ -z "$BINARY_FILE" ]; then
+            echo "Error: No CPU binary found. Available files:"
+            ls *bin-ubuntu-x64*
+            exit 1
+          fi
+          
+          echo "Using binary: $BINARY_FILE"
+          
+          # 解压
+          if [[ "$BINARY_FILE" == *.zip ]]; then
+            unzip "$BINARY_FILE" -d bin
+          elif [[ "$BINARY_FILE" == *.tar.gz ]]; then
+            mkdir -p bin
+            tar -xzf "$BINARY_FILE" -C bin
+          fi
+          
+          # 下载转换脚本和依赖文件
+          wget https://raw.githubusercontent.com/ggerganov/llama.cpp/master/convert_hf_to_gguf.py -O bin/convert_hf_to_gguf.py
+          wget https://raw.githubusercontent.com/ggerganov/llama.cpp/master/requirements.txt -O bin/requirements.txt
+          
+          # 赋予执行权限
+          chmod +x bin/llama-quantize
           
           # 安装 python 依赖
           pip install -r bin/requirements.txt
+          
+          # 清理压缩包
+          rm -f *bin-ubuntu-x64*
       
       - name: Download model
         env:
@@ -66,9 +86,8 @@ jobs:
           
           # 清理 HF 缓存以释放空间
           rm -rf ~/.cache/huggingface
-          
           echo "下载完成: $(du -sh ./model_hf)"
-      
+          df -h
       - name: Convert to GGUF
         run: |
           python bin/convert_hf_to_gguf.py ./model_hf \
