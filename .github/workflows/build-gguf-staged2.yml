@@ -71,6 +71,27 @@ jobs:
             tar -xzf "$BINARY_FILE" -C bin
           fi
           
+          # Debug: 显示解压后的目录结构
+          echo "Listing bin directory:"
+          ls -R bin
+          
+          # 查找 llama-quantize 并移动到 bin/ 根目录
+          QUANTIZE_PATH=$(find bin -name "llama-quantize" -type f | head -n 1)
+          if [ -z "$QUANTIZE_PATH" ]; then
+             # 尝试查找旧名称 quantize
+             QUANTIZE_PATH=$(find bin -name "quantize" -type f | head -n 1)
+          fi
+          
+          if [ -n "$QUANTIZE_PATH" ]; then
+            echo "Found quantize binary at: $QUANTIZE_PATH"
+            if [ "$QUANTIZE_PATH" != "bin/llama-quantize" ]; then
+              mv "$QUANTIZE_PATH" bin/llama-quantize
+            fi
+          else
+            echo "Error: llama-quantize binary not found!"
+            exit 1
+          fi
+          
           # 下载转换脚本和依赖文件
           wget https://raw.githubusercontent.com/ggerganov/llama.cpp/master/convert_hf_to_gguf.py -O bin/convert_hf_to_gguf.py
           wget https://raw.githubusercontent.com/ggerganov/llama.cpp/master/requirements.txt -O bin/requirements.txt
