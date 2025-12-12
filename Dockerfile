@@ -14,7 +14,7 @@ RUN if [ -z "$HF_MODEL_ID" ]; then echo "HF_MODEL_ID is required"; exit 1; fi
 
 # Download model
 # We use huggingface-cli to download the model to a local directory
-RUN hg download ${HF_MODEL_ID} --local-dir ./model_raw  --token "${HF_TOKEN}"
+RUN hf download ${HF_MODEL_ID} --local-dir ./model_raw  --token "${HF_TOKEN}"
 
 # Convert to GGUF
 # Note: The script name might vary slightly depending on llama.cpp version, but convert-hf-to-gguf.py is standard now.
