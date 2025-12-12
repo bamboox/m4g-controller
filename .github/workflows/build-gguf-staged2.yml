@@ -1,0 +1,96 @@
+# .github/workflows/build-gguf-staged2.yml
+
+name: Build GGUF (Staged2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        required: true
+        default: 'Qwen/Qwen2.5-0.5B-Instruct'
+
+jobs:
+  build-and-convert:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Free disk space
+        run: |
+          echo "Before cleanup:"
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          echo "After cleanup:"
+          df -h
+      
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          pip install huggingface_hub hf-transfer
+      
+      - name: Setup llama.cpp
+        run: |
+          git clone https://github.com/ggerganov/llama.cpp
+          cd llama.cpp
+          cmake -B build
+          cmake --build build --config Release
+          
+          # 移动二进制文件并清理构建文件以释放空间
+          mkdir -p ../bin
+          mv build/bin/llama-quantize ../bin/
+          mv convert_hf_to_gguf.py ../bin/
+          mv requirements.txt ../bin/
+          
+          cd ..
+          rm -rf llama.cpp
+          
+          # 安装 python 依赖
+          pip install -r bin/requirements.txt
+      
+      - name: Download model
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_HUB_ENABLE_HF_TRANSFER: 1
+        run: |
+          hf download ${{ github.event.inputs.model_id }} --local-dir ./model_hf --token "${HF_TOKEN}"
+          
+          # 清理 HF 缓存以释放空间
+          rm -rf ~/.cache/huggingface
+          
+          echo "下载完成: $(du -sh ./model_hf)"
+      
+      - name: Convert to GGUF
+        run: |
+          python bin/convert_hf_to_gguf.py ./model_hf \
+            --outfile ./model.gguf \
+            --outtype f16
+          
+          # 删除 HF 模型释放空间
+          rm -rf ./model_hf
+          
+          echo "转换完成: $(du -sh ./model.gguf)"
+      
+      - name: Quantize
+        run: |
+          ./bin/llama-quantize ./model.gguf ./model-q4.gguf Q4_K_M
+          
+          # 删除 f16 释放空间
+          rm ./model.gguf
+          
+          echo "量化完成: $(du -sh ./model-q4.gguf)"
+      
+      - name: Upload GGUF
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-gguf
+          path: ./model-q4.gguf
