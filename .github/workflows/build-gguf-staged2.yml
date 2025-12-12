@@ -98,9 +98,9 @@ jobs:
           cd llama.cpp
           # 安装 python 依赖
           pip install -r requirements.txt
-          cp convert_hf_to_gguf.py ../bin/
-          cd ..
-          rm -rf llama.cpp
+          #cp convert_hf_to_gguf.py ../bin/
+          #cd ..
+          #rm -rf llama.cpp
       
       - name: Download model
         env:
@@ -114,12 +114,14 @@ jobs:
           df -h
       - name: Convert to GGUF
         run: |
-          python bin/convert_hf_to_gguf.py ./model_hf \
-            --outfile ./model.gguf \
+          cd llama.cpp
+          python convert_hf_to_gguf.py ../model_hf \
+            --outfile ../model.gguf \
             --outtype f16
           
           # 删除 HF 模型释放空间
           rm -rf ./model_hf
+          rm -rf llama.cpp
           
           echo "转换完成: $(du -sh ./model.gguf)"
       
