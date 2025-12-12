@@ -75,7 +75,7 @@ jobs:
         run: |
           git clone https://github.com/ggerganov/llama.cpp
           cd llama.cpp
-          make -j$(nproc)
+          # make -j$(nproc)
           pip install -r requirements.txt
       
       - name: Convert to GGUF
