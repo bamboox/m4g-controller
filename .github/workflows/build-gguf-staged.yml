@@ -83,25 +83,25 @@ jobs:
           cd llama.cpp
           python convert_hf_to_gguf.py ../model_hf \
             --outfile ../model.gguf \
-            --outtype f16
+            --outtype Q4_K_M
           
-          # 删除 HF 模型释放空间
-          rm -rf ../model_hf
+          # # 删除 HF 模型释放空间
+          # rm -rf ../model_hf
           
           echo "转换完成: $(du -sh ../model.gguf)"
       
-      - name: Quantize
-        run: |
-          cd llama.cpp
-          ./quantize ../model.gguf ../model-q4.gguf Q4_K_M
+      # - name: Quantize
+      #   run: |
+      #     cd llama.cpp
+      #     ./quantize ../model.gguf ../model-q4.gguf Q4_K_M
           
-          # 删除 f16 释放空间
-          rm ../model.gguf
+      #     # 删除 f16 释放空间
+      #     rm ../model.gguf
           
-          echo "量化完成: $(du -sh ../model-q4.gguf)"
+      #     echo "量化完成: $(du -sh ../model-q4.gguf)"
       
       - name: Upload GGUF
         uses: actions/upload-artifact@v4
         with:
           name: model-gguf
-          path: ./model-q4.gguf
+          path: ./model.gguf
