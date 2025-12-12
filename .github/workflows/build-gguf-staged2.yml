@@ -7,7 +7,7 @@ on:
     inputs:
       model_id:
         required: true
-        default: 'Qwen/Qwen2.5-0.5B-Instruct'
+        default: 'zai-org/AutoGLM-Phone-9B'
 
 jobs:
   build-and-convert:
@@ -72,7 +72,7 @@ jobs:
           echo "Listing bin directory:"
           ls -R bin
           
-          # 查找 llama-quantize 并移动到 bin/ 根目录
+          # 查找包含 llama-quantize 的目录
           QUANTIZE_PATH=$(find bin -name "llama-quantize" -type f | head -n 1)
           if [ -z "$QUANTIZE_PATH" ]; then
              # 尝试查找旧名称 quantize
@@ -80,9 +80,18 @@ jobs:
           fi
           
           if [ -n "$QUANTIZE_PATH" ]; then
-            echo "Found quantize binary at: $QUANTIZE_PATH"
-            if [ "$QUANTIZE_PATH" != "bin/llama-quantize" ]; then
-              mv "$QUANTIZE_PATH" bin/llama-quantize
+            SOURCE_DIR=$(dirname "$QUANTIZE_PATH")
+            echo "Found binaries in: $SOURCE_DIR"
+            
+            # 移动该目录下所有文件到 bin/ 根目录
+            # 使用 find 避免 mv 移动自身报错 (如果 SOURCE_DIR 就是 bin)
+            if [ "$SOURCE_DIR" != "bin" ]; then
+              mv "$SOURCE_DIR"/* bin/
+            fi
+            
+            # 确保 llama-quantize 存在 (兼容旧版本)
+            if [ -f "bin/quantize" ] && [ ! -f "bin/llama-quantize" ]; then
+              mv bin/quantize bin/llama-quantize
             fi
           else
             echo "Error: llama-quantize binary not found!"
@@ -90,7 +99,7 @@ jobs:
           fi
           
           # 赋予执行权限
-          chmod +x bin/llama-quantize
+          chmod +x bin/*
           # 清理压缩包
           rm -f *bin-ubuntu-x64*
           
