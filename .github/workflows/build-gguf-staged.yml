@@ -1,0 +1,115 @@
+# .github/workflows/build-gguf-staged.yml
+
+name: Build GGUF (Staged)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        required: true
+        default: 'Qwen/Qwen2.5-0.5B-Instruct'
+
+jobs:
+  # ==================== 阶段1: 下载模型 ====================
+  download:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo docker image prune --all --force
+          df -h
+      
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          pip install huggingface_hub hf-transfer
+      
+      - name: Download model
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_HUB_ENABLE_HF_TRANSFER: 1
+        run: |
+          python -c "
+          from huggingface_hub import snapshot_download
+          snapshot_download(
+              repo_id='${{ github.event.inputs.model_id }}',
+              local_dir='./model_hf',
+              local_dir_use_symlinks=False,
+              token='${HF_TOKEN}',
+          )
+          "
+          echo "下载完成: $(du -sh ./model_hf)"
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-hf
+          path: ./model_hf
+          retention-days: 1
+  
+  # ==================== 阶段2: 转换 GGUF ====================
+  convert:
+    needs: download
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          df -h
+      
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Download model artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: model-hf
+          path: ./model_hf
+      
+      - name: Setup llama.cpp
+        run: |
+          git clone https://github.com/ggerganov/llama.cpp
+          cd llama.cpp
+          make -j$(nproc)
+          pip install -r requirements.txt
+      
+      - name: Convert to GGUF
+        run: |
+          cd llama.cpp
+          python convert.py ../model_hf \
+            --outfile ../model.gguf \
+            --outtype f16
+          
+          # 删除 HF 模型释放空间
+          rm -rf ../model_hf
+          
+          echo "转换完成: $(du -sh ../model.gguf)"
+      
+      - name: Quantize
+        run: |
+          cd llama.cpp
+          ./quantize ../model.gguf ../model-q4.gguf Q4_K_M
+          
+          # 删除 f16 释放空间
+          rm ../model.gguf
+          
+          echo "量化完成: $(du -sh ../model-q4.gguf)"
+      
+      - name: Upload GGUF
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-gguf
+          path: ./model-q4.gguf
