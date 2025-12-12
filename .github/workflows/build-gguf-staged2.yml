@@ -95,13 +95,10 @@ jobs:
           rm -f *bin-ubuntu-x64*
           
           git clone https://github.com/ggerganov/llama.cpp
+          cd llama.cpp
           # 安装 python 依赖
           pip install -r requirements.txt
-          cp convert_hf_to_gguf.py ../bin/
-          # 复制可能需要的额外依赖文件/目录
-          if [ -d "requirements" ]; then
-            cp -r requirements ../bin/
-          fi
+          cp convert_hf_to_gguf.py ../../bin/
           cd ..
           rm -rf llama.cpp
       
