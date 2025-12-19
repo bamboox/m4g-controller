@@ -124,7 +124,7 @@ jobs:
         run: |
           ./bin/llama-quantize ./model.gguf ./model-q4.gguf Q4_K_M
           # 删除 f16 释放空间
-          rm ./model.gguf
+          # rm ./model.gguf
           echo "量化完成: $(du -sh ./model-q4.gguf)"
       
       - name: Upload GGUF
@@ -132,3 +132,25 @@ jobs:
         with:
           name: model-gguf
           path: ./model-q4.gguf
+
+      - name: Generate Release Tag
+        id: tag
+        run: |
+          MODEL_NAME=$(echo "${{ github.event.inputs.model_id }}" | cut -d'/' -f2)
+          DATE=$(date +'%Y%m%d-%H%M')
+          TAG_NAME="${MODEL_NAME}-${DATE}"
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          name: ${{ github.event.inputs.model_id }} (GGUF)
+          body: |
+            Auto-converted GGUF model.
+            
+            Source: ${{ github.event.inputs.model_id }}
+            Quantization: Q4_K_M
+          files: ./model-q4.gguf
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
